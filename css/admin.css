@@ -1,0 +1,21 @@
+@CHARSET "UTF-8";
+
+fieldset.mca_adm {
+        margin: 1em 0;
+        background: #fdfdfd;
+        padding: 0 1em 1em 1em;
+        border: 1px solid #bbb;
+        border-radius: 11px;
+        -webkit-border-radius: 11px;
+        -moz-border-radius: 11px;
+}
+
+fieldset.mca_adm legend {
+        color: #999;
+        padding: 0 5px;
+        font-weight: bold;
+}
+
+fieldset.mca_adm legend a:hover {
+        text-decoration: none;
+}

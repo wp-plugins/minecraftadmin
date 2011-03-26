@@ -1,0 +1,14 @@
+@CHARSET "UTF-8";
+
+table.mca_status td {
+	vertical-align: top;
+}
+
+table.mca_status td.nd {
+	text-align: right;
+}
+
+li.mca_player {
+	list-style-image: url("../img/face.png");
+	list-style-position: inside;
+}
