@@ -24,7 +24,7 @@ Author URI: http://forge.bashdocumentor.org/
 */
 
 
-define('MCA_VERSION', '0.4.0');
+define('MCA_VERSION', '0.4.1');
 define('MCA_LIB', dirname(__FILE__) . '/lib');
 define('MCA_TMPL', dirname(__FILE__) . '/tmpl');
 

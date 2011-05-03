@@ -235,8 +235,10 @@ class MinecraftAdmin
                 include MCA_TMPL . '/admin/config.bukkit.whitelist.php';
                 break;
             case 'minecraftadmin-permissions':
-                $perms = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
-                $worldList = $perms->getWorldsList();
+                if (!is_null($config->get('mca.permissions.path')) && trim($config->get('mca.permissions.path')) != '') {
+                    $perms = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
+                    $worldList = $perms->getWorldsList();
+                }
                 include MCA_TMPL . '/admin/config.bukkit.permissions.php';
                 break;
         }

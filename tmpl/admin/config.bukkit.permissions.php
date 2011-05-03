@@ -13,6 +13,7 @@
 	</p>
 </fieldset>
 </form>
+<?php if (!is_null($config->get('mca.permissions.path')) && trim($config->get('mca.permissions.path')) != '') { ?>
 <form method="post" enctype="multipart/form-data">
 <fieldset class="mca_adm">
 	<legend>Permissions load commands</legend>
@@ -73,3 +74,4 @@
 	</table>
 </fieldset>
 <div id="mca_dialog_upload"></div>
+<?php } ?>

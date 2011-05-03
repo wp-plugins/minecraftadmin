@@ -4,7 +4,7 @@ Donate link:
 Tags: widget, admin
 Requires at least: 3.1
 Tested up to: 3.1
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 
 MinecraftAdmin is a plugins for display status of a Minecraft server. 
 
@@ -66,6 +66,9 @@ http://code.google.com/p/wp-minecraftadmin/issues/list
 
 
 == Changelog ==
+
+= 0.4.1 =
+* Bugfix Permission configuration page does not display after install
 
 = 0.4.0 =
 * Add Permission by groups (work with user in Whitelist)
