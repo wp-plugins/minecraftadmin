@@ -18,6 +18,7 @@
 require_once MCA_LIB . '/Bukkit/Whitelist.php';
 require_once MCA_LIB . '/Bukkit/RemoteToolkit.php';
 require_once MCA_LIB . '/Bukkit/Tcp.php';
+require_once MCA_LIB . '/Bukkit/Permissions.php';
 
 /**
  * Class for MinecraftAdmin 
@@ -61,6 +62,11 @@ class MinecraftAdmin
             'deactivate'
         ));
         
+        $version = get_option('mca.dbversion');
+        if ($version != MCA_VERSION) {
+            $this->update();
+        }
+        
         /* Add the admin menu */
         add_action('admin_menu', array(
             $this,
@@ -71,6 +77,10 @@ class MinecraftAdmin
         if (is_admin()) {
             wp_register_style('mca_admin_css', WP_PLUGIN_URL . '/minecraftadmin/css/admin.css');
             wp_enqueue_style('mca_admin_css');
+            wp_register_script('jquery-ui-progressbar', WP_PLUGIN_URL . '/minecraftadmin/js/jquery.ui.progressbar.min.js', array('jquery', 'jquery-ui-core'), '1.8.11', true);
+            wp_register_script('mca-js-adm-permissions', WP_PLUGIN_URL . '/minecraftadmin/js/config.permissions.js', array('jquery', 'jquery-ui-dialog', 'jquery-ui-progressbar'), MCA_VERSION, true);
+            wp_enqueue_script('mca-js-adm-permissions');
+            wp_enqueue_style('wp-jquery-ui-dialog');
         } else {
             wp_register_style('mca_css', WP_PLUGIN_URL . '/minecraftadmin/css/mca.css');
             wp_enqueue_style('mca_css');
@@ -83,7 +93,7 @@ class MinecraftAdmin
             $wl_mod = Bukkit_Whitelist::getInstance();
             $wl_mod->setDatabase($wpdb, 'wp');
             $wl_mod->setQueryList("SELECT username FROM " . $wpdb->prefix . "mca_whitelist");
-            $wl_mod->setQueryGet("SELECT name FROM " . $wpdb->prefix . "mca_whitelist WHERE username = '<%USERNAME%>'");
+            $wl_mod->setQueryGet("SELECT username FROM " . $wpdb->prefix . "mca_whitelist WHERE username = '<%USERNAME%>'");
             $wl_mod->setQueryAdd("INSERT INTO " . $wpdb->prefix . "mca_whitelist (username) VALUES ('<%USERNAME%>')");
             $wl_mod->setQueryDel("DELETE FROM " . $wpdb->prefix . "mca_whitelist WHERE username = '<%USERNAME%>'");
             
@@ -103,7 +113,16 @@ class MinecraftAdmin
         if ($config->getBoolean('mca.enable.remotetoolkit') && $config->getBoolean('mca.enable.bukkittcp')) {
             add_action('widgets_init', array('MinecraftAdmin_Widget_Status', 'load'));
             add_action('init', array($widget, 'status_handler'));
-        }       
+        }
+        /* Ajax */
+        if ($config->getBoolean('mca.enable.permissions')) {
+            add_action('wp_ajax_permissions-pushfile', array($this, 'ajax'));
+            add_action('wp_ajax_permissions-loadfile', array($this, 'ajax'));
+            add_action('wp_ajax_permissions-loadworld', array($this, 'ajax'));
+            add_action('wp_ajax_permissions-listrights', array($this, 'ajax'));
+            add_action('wp_ajax_permissions-groupinfos', array($this, 'ajax'));
+            add_action('wp_ajax_permissions-savegroup', array($this, 'ajax'));
+        }   
     }
     
     /**
@@ -123,6 +142,9 @@ class MinecraftAdmin
         }
         if ($config->getBoolean('mca.enable.whitelist')) {
             $pages[] = add_submenu_page('minecraftadmin', 'Whitelist | Minecraft', 'Whitelist', 'manage_options', 'minecraftadmin-whitelist', array($this, 'admin_config_page'));
+        }
+        if ($config->getBoolean('mca.enable.permissions')) {
+            $pages[] = add_submenu_page('minecraftadmin', 'Permissions | Minecraft', 'Permissions', 'manage_options', 'minecraftadmin-permissions', array($this, 'admin_config_page'));
         }
         if (current_user_can('manage_options')) {
             foreach ($pages as $page) {
@@ -147,6 +169,7 @@ class MinecraftAdmin
                     $config->set('mca.enable.remotetoolkit', isset($_POST['mca_enable_remotetoolkit']) ? 1 : 0);
                     $config->set('mca.enable.bukkittcp', isset($_POST['mca_enable_bukkittcp']) ? 1 : 0);
                     $config->set('mca.enable.whitelist', isset($_POST['mca_enable_whitelist']) ? 1 : 0);
+                    $config->set('mca.enable.permissions', isset($_POST['mca_enable_permissions']) ? 1 : 0);
                     break;
                 case 'minecraftadmin-bukkittcp':
                     $config->set('mca.bukkittcp.host', $_POST['mca_bukkittcp_host']);
@@ -175,6 +198,9 @@ class MinecraftAdmin
                             $wl_mod->delUser($user);
                         }
                     }
+                    break;
+                case 'minecraftadmin-permissions':
+                    $config->set('mca.permissions.path', $_POST['mca_permissions_path']);
                     break;
             }
         }        
@@ -207,6 +233,109 @@ class MinecraftAdmin
                 $wl_mod = Bukkit_Whitelist::getInstance();
                 $listWlUser = $wl_mod->listUser();
                 include MCA_TMPL . '/admin/config.bukkit.whitelist.php';
+                break;
+            case 'minecraftadmin-permissions':
+                $perms = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
+                $worldList = $perms->getWorldsList();
+                include MCA_TMPL . '/admin/config.bukkit.permissions.php';
+                break;
+        }
+    }
+    
+    /**
+     * Ajax
+     */
+    public function ajax() {
+        global $wpdb;
+        switch ($_REQUEST['action']) {
+            case 'permissions-pushfile':
+                $input = fopen('php://input', 'r');
+                $tmpfile = tmpfile();
+                $realSize = stream_copy_to_stream($input, $tmpfile);
+                fclose($input);
+                
+                if (!isset($_SERVER['CONTENT_LENGTH'])) {
+                    echo json_encode(array('error' => "Can't get the size of file"));
+                } elseif ($realSize != $_SERVER['CONTENT_LENGTH']) {
+                    echo json_encode(array('error' => "Error during upload file"));
+                } else {
+                    fseek($tmpfile, 0);
+                    $tmpfilename = tempnam(sys_get_temp_dir(), 'wpmca_');
+                    file_put_contents($tmpfilename, fread($tmpfile, $realSize));
+                    echo json_encode(array('success' => $tmpfilename));
+                }
+                exit();
+                break;
+            case 'permissions-loadfile':
+                if ($this->loadFile($_POST['fname'])) {
+                    echo json_encode(array('success' => true));
+                } else {
+                    echo json_encode(array('success' => false, 'error' => "Error loading file"));
+                }
+                exit();
+                break;
+            case 'permissions-loadworld':
+                $config = MinecraftAdmin_Config::getInstance();
+                $permissions = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
+                $permissions->loadWorld($_POST['world']);
+                echo json_encode($permissions->getGroups());
+                exit();
+                break;
+            case 'permissions-listrights':
+                $query = "SELECT perm_name FROM " . $wpdb->prefix . "mca_permissions ORDER BY perm_name";
+                $res = $wpdb->get_results($query, ARRAY_N);
+                $list = array();
+                if ($res !== false) {
+                    foreach ($res as $right) {
+                        $list[] = $right[0];
+                    }
+                }
+                echo json_encode($list);
+                exit();
+                break;
+            case 'permissions-groupinfos':
+                $config = MinecraftAdmin_Config::getInstance();
+                $permissions = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
+                $permissions->loadWorld($_POST['world']);
+                $infos = $permissions->getGroupInfos($_POST['group']);
+                /*
+                 * Insert unknown permissions
+                 */
+                $query = "SELECT perm_name FROM " . $wpdb->prefix . "mca_permissions ORDER BY perm_name";
+                $res = $wpdb->get_results($query, ARRAY_N);
+                $listPerm = array();
+                if ($res !== false) {
+                    foreach ($res as $right) {
+                        $listPerm[] = $right[0];
+                    }
+                }
+                $query = "INSERT INTO " . $wpdb->prefix . "mca_permissions (perm_name, perm_desc) VALUES (%s, '')";
+                foreach ($infos['permissions'] as $perm) {
+                    if (!in_array($perm, $listPerm)) {
+                        $tmpQuery = $wpdb->prepare($query, $perm);
+                        $wpdb->query($tmpQuery);
+                    }
+                }
+                if ($config->getBoolean('mca.enable.whitelist')) {
+                    $infos['whitelist']['enable'] = true;
+                    $whitelist = Bukkit_Whitelist::getInstance();
+                    $infos['whitelist']['users'] = $whitelist->listUser();
+                } else {
+                    $infos['whitelist']['enable'] = false;
+                }
+                echo json_encode($infos);
+                exit();
+                break;
+            case 'permissions-savegroup':
+                $config = MinecraftAdmin_Config::getInstance();
+                $permissions = Bukkit_Permissions::getInstance($config->get('mca.permissions.path'));
+                $permissions->loadWorld($_POST['world']);
+                if (false === $permissions->saveGroup($_POST['world'], $_POST['group'], json_decode(str_replace('\\', '', $_POST['users'])), json_decode(str_replace('\\', '', $_POST['inherite'])), json_decode(str_replace('\\', '', $_POST['rights'])))) {
+                    echo json_encode(array('success' => false));
+                } else {
+                    echo json_encode(array('success' => true));
+                }
+                exit();
                 break;
         }
     }
@@ -243,25 +372,31 @@ class MinecraftAdmin
         global $wpdb;
         $config = MinecraftAdmin_Config::getInstance();
         $config->initSettings();
-        
-        $tbl_name = $wpdb->prefix . "mca_whitelist";
-        
-        $sql = "CREATE TABLE " . $tbl_name . " (
+
+        /* Table for whitelist */
+        $tbl_name_wl = $wpdb->prefix . "mca_whitelist";
+        $sqlWl = "CREATE TABLE " . $tbl_name_wl . " (
         	username VARCHAR(255) NOT NULL,
         	PRIMARY KEY (username));";
         
+        /* Table for permissions */
+        $tbl_name_perm = $wpdb->prefix . "mca_permissions";
+        $sqlPerm = "CREATE TABLE " . $tbl_name_perm . " (
+        	perm_name VARCHAR(255) NOT NULL,
+        	perm_desc TINYTEXT,
+        	PRIMARY KEY (perm_name));";
+        
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         
-        if($wpdb->get_var("show tables like '$tbl_name'") != $table_name) {
-            dbDelta($sql);
-            add_option('mca.dbversion', MCA_VERSION);
-        } else {
-            $version = get_option('mca.dbversion');
-            if ($version != MCA_VERSION) {
-                dbDelta($sql);
-                update_option('mca.dbversion', MCA_VERSION);
-            }
+        $version = get_option('mca.dbversion');
+        
+        if($wpdb->get_var("show tables like '$tbl_name_wl'") != $tbl_name_wl) {
+            dbDelta($sqlWl);
         }
+        if($wpdb->get_var("show tables like '$tbl_name_perm'") != $tbl_name_perm) {
+            dbDelta($sqlPerm);
+        }
+        add_option('mca.dbversion', MCA_VERSION);
     }
     
     /**
@@ -269,10 +404,102 @@ class MinecraftAdmin
      */
     public function deactivate()
     {
+        global $wpdb;
         $config = MinecraftAdmin_Config::getInstance();
         $config->deleteSettings();
-
+        
+        $tbl_name_wl = $wpdb->prefix . "mca_whitelist";
+        $tbl_name_perm = $wpdb->prefix . "mca_permissions";
+        
+        $sql = array();
+        if($wpdb->get_var("show tables like '$tbl_name_wl'") != $tbl_name_wl) {
+            $sql[] = "DROP TABLE " . $tbl_name_wl;
+        }
+        if($wpdb->get_var("show tables like '$tbl_name_perm'") != $tbl_name_perm) {
+            $sql[] = "DROP TABLE " . $tbl_name_perm;
+        }
+        
+        foreach ($sql as $query) {
+            $wpdb->query($query);
+        }
+        
         delete_option('mca.dbversion');
+    }
+    
+    /**
+     * Load a file with permissions informations
+     * 
+     * @param string $file The file path
+     * @return bool
+     */
+    public function loadFile($file)
+    {
+        global $wpdb;
+        if (false === file_exists($file)) {
+            return false;
+        }
+        $fd = fopen($file, 'r');
+        $query = "INSERT INTO " . $wpdb->prefix . "mca_permissions (perm_name, perm_desc) VALUES (%s, %s)";
+        $ok = true;
+        $tmpPerms = array();
+        while ($line = fgets($fd)) {
+            $info = explode(';', trim($line), 2);
+            if (count($info) == 2) {
+                $tmpPerms[] = $info[0];
+                $tmpQuery = $wpdb->prepare($query, $info[0], $info[1]);
+                $ret = $wpdb->query($tmpQuery);
+                if ($ret === false) {
+                    $ok = false;
+                }                
+            }
+        }
+        fclose($fd);
+    	/*
+         * Insert wildcard
+         */
+        $wc = array();
+        foreach ($tmpPerms as $perm) {
+            $tmpinfo = $perm;
+            while (($pos = strrpos($tmpinfo, '.')) !== false) {
+                $wc[] = substr($tmpinfo, 0, $pos + 1) . '*';
+                $tmpinfo = substr($tmpinfo, 0, $pos);
+            }
+        }
+        $wc = array_unique($wc);
+        foreach ($wc as $perm) {
+            $tmpQuery = $wpdb->prepare($query, $perm, "General rights for " . preg_replace('/\.\*$/', '', $perm));
+            $ret = $wpdb->query($tmpQuery);
+        }
+        return $ok;
+    }
+    
+    /**
+     * Update the plugins
+     */
+    private function update()
+    {
+        global $wpdb;
+        $config = MinecraftAdmin_Config::getInstance();
+        $config->initSettings();
+
+        /* Table for whitelist */
+        $tbl_name_wl = $wpdb->prefix . "mca_whitelist";
+        $sqlWl = "CREATE TABLE " . $tbl_name_wl . " (
+        	username VARCHAR(255) NOT NULL,
+        	PRIMARY KEY (username));";
+        
+        /* Table for permissions */
+        $tbl_name_perm = $wpdb->prefix . "mca_permissions";
+        $sqlPerm = "CREATE TABLE " . $tbl_name_perm . " (
+        	perm_name VARCHAR(255) NOT NULL,
+        	perm_desc TINYTEXT,
+        	PRIMARY KEY (perm_name));";
+        
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        
+        dbDelta($sqlWl);
+        dbDelta($sqlPerm);
+        update_option('mca.dbversion', MCA_VERSION);
     }
 
     /**

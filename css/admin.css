@@ -19,3 +19,46 @@ fieldset.mca_adm legend {
 fieldset.mca_adm legend a:hover {
         text-decoration: none;
 }
+
+.mca-progressbar {
+	width: 80%;
+	border: 1px solid #DDDDDD;
+	background: #EEEEEE;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	margin-left: 10%;
+}
+
+.ui-progressbar {
+	text-align: left;
+	height: 1em;
+}
+
+.ui-progressbar-value {
+	background: #444444;
+	height: 100%;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+}
+
+.mca_filename {
+	margin-left: 10%;
+}
+
+span.error {
+	color: red;
+	font-style: italic;
+}
+
+#mca-permissions-groups {
+	display: none;
+}
+
+.mca-multi {
+	width: 250px;
+	height: 200px !important;
+}
+
+option.mca-option-new {
+	font-style: italic;
+}

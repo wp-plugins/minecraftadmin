@@ -45,7 +45,8 @@ class MinecraftAdmin_Config
     	'mca.remotetoolkit.host' => 'localhost',
         'mca.remotetoolkit.port' => 25561,
         'mca.remotetoolkit.user' => 'user',
-        'mca.remotetoolkit.pass' => 'pass'
+        'mca.remotetoolkit.pass' => 'pass',
+        'mca.permissions.path' => ''
     ); 
     
     /**

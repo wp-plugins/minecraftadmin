@@ -22,6 +22,11 @@
 			<td><label><input class="enabled" type="checkbox" name="mca.enable.whitelist" value="1"<?php checked($config->getBoolean('mca.enable.whitelist'), true); ?> />&nbsp;<strong>Enable</strong></label><br/>
 			<span class="description">The whitelist of user for connect to server.</span>
 		</tr>
+		<tr>
+			<th>Permissions</th>
+			<td><label><input class="enabled" type="checkbox" name="mca.enable.permissions" value="1"<?php checked($config->getBoolean('mca.enable.permissions'), true); ?> />&nbsp;<strong>Enable</strong></label><br/>
+			<span class="description">Manage the permissions for server.</span>
+		</tr>
 	</table>
 	<p class="submit">
 	<input type="submit" name="options_save" class="button-primary" value="Save changes" />
