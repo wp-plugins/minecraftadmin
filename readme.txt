@@ -4,7 +4,7 @@ Donate link:
 Tags: widget, admin
 Requires at least: 3.1
 Tested up to: 3.1
-Stable tag: 0.4.2
+Stable tag: 0.4.3
 
 MinecraftAdmin is a plugins for display status of a Minecraft server. 
 
@@ -66,6 +66,9 @@ http://code.google.com/p/wp-minecraftadmin/issues/list
 
 
 == Changelog ==
+
+= 0.4.3 =
+* Fix css for list of players widget
 
 = 0.4.2 =
 * Bugfix version tag

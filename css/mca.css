@@ -9,6 +9,6 @@ table.mca_status td.nd {
 }
 
 li.mca_player {
-	list-style-image: url("../img/face.png");
-	list-style-position: inside;
+	list-style-image: url("../img/face.png") !important;
+	list-style-position: inside !important;
 }

@@ -17,14 +17,14 @@
 /*
 Plugin Name: MinecraftAdmin
 Description: Manage a minecraft server with craftbukkit
-Version: 0.4.2
-Plugin URI: http://forge.bashdocumentor.org/
+Version: 0.4.3
+Plugin URI: http://code.google.com/p/wp-minecraftadmin/
 Author: Maximilien Bersoult
-Author URI: http://forge.bashdocumentor.org/
+Author URI: http://code.google.com/p/wp-minecraftadmin/
 */
 
 
-define('MCA_VERSION', '0.4.2');
+define('MCA_VERSION', '0.4.3');
 define('MCA_LIB', dirname(__FILE__) . '/lib');
 define('MCA_TMPL', dirname(__FILE__) . '/tmpl');
 
